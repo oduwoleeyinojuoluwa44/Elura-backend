@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<Response> {
   let payload: unknown;
   try {
     payload = await request.json();
-  } catch (_error: unknown) {
+  } catch {
     return toHttpResponse(err(createError("VALIDATION_ERROR", "Request body must be valid JSON.")), 200);
   }
 
@@ -37,4 +37,3 @@ export async function POST(request: Request): Promise<Response> {
   );
   return toHttpResponse(result, 200);
 }
-

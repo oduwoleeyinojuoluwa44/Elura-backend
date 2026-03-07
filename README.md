@@ -104,10 +104,22 @@ npm install
 2. Create local environment file:
 
 ```bash
-cp .env.example .env.local
+Copy-Item .env.example .env.local
 ```
 
-3. Implement integrations:
+3. Start the dev server:
+
+```bash
+npm run dev
+```
+
+4. Run baseline checks:
+
+```bash
+npm run check
+```
+
+5. Implement integrations:
 
 - wire Supabase clients in `src/lib/supabase/*`
 - replace repository stubs in `src/features/*/*.repository.ts`
@@ -135,4 +147,3 @@ Backend is MVP-ready when:
 - AI consultation endpoint returns structured output
 - RLS blocks unauthorized access
 - migrations make setup reproducible
-

@@ -22,7 +22,7 @@ export async function POST(request: Request): Promise<Response> {
   let payload: unknown;
   try {
     payload = await request.json();
-  } catch (_error: unknown) {
+  } catch {
     const invalidJsonResponse: ApiFailure = {
       success: false,
       error: {
@@ -36,4 +36,3 @@ export async function POST(request: Request): Promise<Response> {
   const result: Result<BookingRequest, AppError> = await createBookingRequest(payload);
   return toHttpResponse(result, 201);
 }
-

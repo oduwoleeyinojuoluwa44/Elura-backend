@@ -5,9 +5,9 @@ import { httpStatusForError, toApiFailure, type AppError } from "../../../../sha
 import type { Result } from "../../../../shared/result.types";
 
 interface ArtistRouteContext {
-  params: {
+  params: Promise<{
     username: string;
-  };
+  }>;
 }
 
 function toHttpResponse<T>(result: Result<T, AppError>, successStatus: number): Response {
@@ -25,10 +25,10 @@ function toHttpResponse<T>(result: Result<T, AppError>, successStatus: number): 
 }
 
 export async function GET(_request: Request, context: ArtistRouteContext): Promise<Response> {
+  const params: { username: string } = await context.params;
   const result: Result<ArtistProfile, AppError> = await getPublishedArtistByUsername(
-    context.params.username
+    params.username
   );
 
   return toHttpResponse(result, 200);
 }
-
