@@ -14,9 +14,45 @@ function parseRequiredString(value: unknown, fieldName: string): Result<string, 
   return ok(value.trim());
 }
 
-function parseOptionalString(value: unknown, fieldName: string): Result<string | undefined, AppError> {
-  if (value === undefined || value === null) {
+function hasOwnField(record: Record<string, unknown>, fieldName: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, fieldName);
+}
+
+function readField(
+  record: Record<string, unknown>,
+  primaryKey: string,
+  aliasKey?: string
+): { present: boolean; value: unknown } {
+  if (hasOwnField(record, primaryKey)) {
+    return {
+      present: true,
+      value: record[primaryKey]
+    };
+  }
+
+  if (aliasKey !== undefined && hasOwnField(record, aliasKey)) {
+    return {
+      present: true,
+      value: record[aliasKey]
+    };
+  }
+
+  return {
+    present: false,
+    value: undefined
+  };
+}
+
+function parseOptionalNullableString(
+  value: unknown,
+  fieldName: string
+): Result<string | null | undefined, AppError> {
+  if (value === undefined) {
     return ok(undefined);
+  }
+
+  if (value === null) {
+    return ok(null);
   }
 
   if (typeof value !== "string") {
@@ -24,7 +60,7 @@ function parseOptionalString(value: unknown, fieldName: string): Result<string |
   }
 
   const trimmed: string = value.trim();
-  return ok(trimmed === "" ? undefined : trimmed);
+  return ok(trimmed === "" ? null : trimmed);
 }
 
 function parseOptionalStringArray(
@@ -73,15 +109,17 @@ export function parseCreateOrUpdateArtistInput(
     return err(createError("VALIDATION_ERROR", "Payload must be a JSON object."));
   }
 
+  const fullNameField: { present: boolean; value: unknown } = readField(payload, "full_name", "fullName");
   const fullNameResult: Result<string, AppError> = parseRequiredString(
-    payload["full_name"] ?? payload["fullName"],
+    fullNameField.value,
     "full_name"
   );
   if (!fullNameResult.ok) {
     return fullNameResult;
   }
 
-  const usernameResult: Result<string, AppError> = parseRequiredString(payload["username"], "username");
+  const usernameField: { present: boolean; value: unknown } = readField(payload, "username");
+  const usernameResult: Result<string, AppError> = parseRequiredString(usernameField.value, "username");
   if (!usernameResult.ok) {
     return usernameResult;
   }
@@ -96,53 +134,79 @@ export function parseCreateOrUpdateArtistInput(
     );
   }
 
-  const bioResult: Result<string | undefined, AppError> = parseOptionalString(payload["bio"], "bio");
+  const bioField: { present: boolean; value: unknown } = readField(payload, "bio");
+  const bioResult: Result<string | null | undefined, AppError> = parseOptionalNullableString(
+    bioField.value,
+    "bio"
+  );
   if (!bioResult.ok) {
     return bioResult;
   }
 
-  const locationResult: Result<string | undefined, AppError> = parseOptionalString(
-    payload["location"],
+  const locationField: { present: boolean; value: unknown } = readField(payload, "location");
+  const locationResult: Result<string | null | undefined, AppError> = parseOptionalNullableString(
+    locationField.value,
     "location"
   );
   if (!locationResult.ok) {
     return locationResult;
   }
 
+  const specialtyField: { present: boolean; value: unknown } = readField(payload, "specialty");
   const specialtyResult: Result<ArtistSpecialty[] | undefined, AppError> = parseOptionalStringArray(
-    payload["specialty"],
+    specialtyField.value,
     "specialty"
   );
   if (!specialtyResult.ok) {
     return specialtyResult;
   }
 
-  const priceRangeResult: Result<string | undefined, AppError> = parseOptionalString(
-    payload["price_range"] ?? payload["priceRange"],
+  const priceRangeField: { present: boolean; value: unknown } = readField(
+    payload,
+    "price_range",
+    "priceRange"
+  );
+  const priceRangeResult: Result<string | null | undefined, AppError> = parseOptionalNullableString(
+    priceRangeField.value,
     "price_range"
   );
   if (!priceRangeResult.ok) {
     return priceRangeResult;
   }
 
-  const instagramResult: Result<string | undefined, AppError> = parseOptionalString(
-    payload["instagram_handle"] ?? payload["instagramHandle"],
+  const instagramField: { present: boolean; value: unknown } = readField(
+    payload,
+    "instagram_handle",
+    "instagramHandle"
+  );
+  const instagramResult: Result<string | null | undefined, AppError> = parseOptionalNullableString(
+    instagramField.value,
     "instagram_handle"
   );
   if (!instagramResult.ok) {
     return instagramResult;
   }
 
-  const profileImageResult: Result<string | undefined, AppError> = parseOptionalString(
-    payload["profile_image_url"] ?? payload["profileImageUrl"],
+  const profileImageField: { present: boolean; value: unknown } = readField(
+    payload,
+    "profile_image_url",
+    "profileImageUrl"
+  );
+  const profileImageResult: Result<string | null | undefined, AppError> = parseOptionalNullableString(
+    profileImageField.value,
     "profile_image_url"
   );
   if (!profileImageResult.ok) {
     return profileImageResult;
   }
 
+  const isPublishedField: { present: boolean; value: unknown } = readField(
+    payload,
+    "is_published",
+    "isPublished"
+  );
   const isPublishedResult: Result<boolean | undefined, AppError> = parseOptionalBoolean(
-    payload["is_published"] ?? payload["isPublished"],
+    isPublishedField.value,
     "is_published"
   );
   if (!isPublishedResult.ok) {
@@ -154,25 +218,25 @@ export function parseCreateOrUpdateArtistInput(
     username: normalizedUsername
   };
 
-  if (bioResult.value !== undefined) {
+  if (bioField.present && bioResult.value !== undefined) {
     input.bio = bioResult.value;
   }
-  if (locationResult.value !== undefined) {
+  if (locationField.present && locationResult.value !== undefined) {
     input.location = locationResult.value;
   }
-  if (specialtyResult.value !== undefined) {
+  if (specialtyField.present && specialtyResult.value !== undefined) {
     input.specialty = specialtyResult.value;
   }
-  if (priceRangeResult.value !== undefined) {
+  if (priceRangeField.present && priceRangeResult.value !== undefined) {
     input.priceRange = priceRangeResult.value;
   }
-  if (instagramResult.value !== undefined) {
+  if (instagramField.present && instagramResult.value !== undefined) {
     input.instagramHandle = instagramResult.value;
   }
-  if (profileImageResult.value !== undefined) {
+  if (profileImageField.present && profileImageResult.value !== undefined) {
     input.profileImageUrl = profileImageResult.value;
   }
-  if (isPublishedResult.value !== undefined) {
+  if (isPublishedField.present && isPublishedResult.value !== undefined) {
     input.isPublished = isPublishedResult.value;
   }
 
@@ -201,4 +265,3 @@ export function parseArtistDiscoveryFilters(
 
   return ok(filters);
 }
-

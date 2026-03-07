@@ -2,7 +2,6 @@ export type ArtistSpecialty = string;
 
 export interface ArtistProfile {
   id: string;
-  userId: string;
   username: string;
   fullName: string;
   bio: string | null;
@@ -16,15 +15,19 @@ export interface ArtistProfile {
   updatedAt: string;
 }
 
+export interface ArtistProfileRecord extends ArtistProfile {
+  userId: string;
+}
+
 export interface CreateOrUpdateArtistInput {
   fullName: string;
   username: string;
-  bio?: string;
-  location?: string;
+  bio?: string | null;
+  location?: string | null;
   specialty?: ArtistSpecialty[];
-  priceRange?: string;
-  instagramHandle?: string;
-  profileImageUrl?: string;
+  priceRange?: string | null;
+  instagramHandle?: string | null;
+  profileImageUrl?: string | null;
   isPublished?: boolean;
 }
 
@@ -33,4 +36,3 @@ export interface ArtistDiscoveryFilters {
   specialty?: ArtistSpecialty;
   priceRange?: string;
 }
-

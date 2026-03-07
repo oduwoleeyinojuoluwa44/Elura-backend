@@ -4,6 +4,7 @@ export type ErrorCode =
   | "VALIDATION_ERROR"
   | "UNAUTHORIZED"
   | "FORBIDDEN"
+  | "CONFLICT"
   | "NOT_FOUND"
   | "NOT_IMPLEMENTED"
   | "INTERNAL_ERROR";
@@ -34,6 +35,8 @@ export function httpStatusForError(code: ErrorCode): number {
       return 401;
     case "FORBIDDEN":
       return 403;
+    case "CONFLICT":
+      return 409;
     case "NOT_FOUND":
       return 404;
     case "NOT_IMPLEMENTED":
@@ -60,4 +63,3 @@ export function toApiFailure(error: AppError): ApiFailure {
 
   return failure;
 }
-

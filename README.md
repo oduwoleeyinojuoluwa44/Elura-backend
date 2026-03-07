@@ -62,6 +62,8 @@ src/
 
 Routes delegate into feature services and return typed response envelopes.
 
+Current auth note: `POST /api/artists` expects a temporary `x-user-id` header until the dedicated auth feature is implemented.
+
 ## Data Model Summary
 
 MVP core entities:

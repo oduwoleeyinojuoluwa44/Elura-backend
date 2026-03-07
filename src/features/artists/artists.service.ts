@@ -1,12 +1,57 @@
 import { createError, type AppError } from "../../shared/errors";
-import { err, type Result } from "../../shared/result.types";
+import { err, ok, type Result } from "../../shared/result.types";
 import {
+  fetchArtistProfileByOwnerUserIdFromStore,
   fetchPublishedArtistByUsernameFromStore,
   fetchPublishedArtistsFromStore,
   upsertArtistProfileInStore
 } from "./artists.repository";
 import { parseArtistDiscoveryFilters, parseCreateOrUpdateArtistInput } from "./artists.schemas";
-import type { ArtistDiscoveryFilters, ArtistProfile, CreateOrUpdateArtistInput } from "./artists.types";
+import type {
+  ArtistDiscoveryFilters,
+  ArtistProfile,
+  ArtistProfileRecord,
+  CreateOrUpdateArtistInput
+} from "./artists.types";
+
+interface PublishCandidate {
+  fullName: string;
+  username: string;
+  location: string | null;
+  specialty: string[];
+}
+
+function buildPublishCandidate(
+  input: CreateOrUpdateArtistInput,
+  existingProfile: ArtistProfileRecord | null
+): PublishCandidate {
+  return {
+    fullName: input.fullName,
+    username: input.username,
+    location: input.location ?? existingProfile?.location ?? null,
+    specialty: input.specialty ?? existingProfile?.specialty ?? []
+  };
+}
+
+function validatePublishCandidate(candidate: PublishCandidate): Result<void, AppError> {
+  if (candidate.fullName.trim() === "") {
+    return err(createError("VALIDATION_ERROR", "full_name is required before publishing."));
+  }
+
+  if (candidate.username.trim() === "") {
+    return err(createError("VALIDATION_ERROR", "username is required before publishing."));
+  }
+
+  if (candidate.location === null || candidate.location.trim() === "") {
+    return err(createError("VALIDATION_ERROR", "location is required before publishing."));
+  }
+
+  if (candidate.specialty.length === 0) {
+    return err(createError("VALIDATION_ERROR", "At least one specialty is required before publishing."));
+  }
+
+  return ok(undefined);
+}
 
 export async function upsertArtistProfile(
   payload: unknown,
@@ -19,6 +64,23 @@ export async function upsertArtistProfile(
   const parsedInput: Result<CreateOrUpdateArtistInput, AppError> = parseCreateOrUpdateArtistInput(payload);
   if (!parsedInput.ok) {
     return parsedInput;
+  }
+
+  if (parsedInput.value.isPublished === true) {
+    const existingProfileResult: Result<ArtistProfileRecord | null, AppError> =
+      await fetchArtistProfileByOwnerUserIdFromStore(ownerUserId);
+    if (!existingProfileResult.ok) {
+      return existingProfileResult;
+    }
+
+    const publishCandidate: PublishCandidate = buildPublishCandidate(
+      parsedInput.value,
+      existingProfileResult.value
+    );
+    const publishValidationResult: Result<void, AppError> = validatePublishCandidate(publishCandidate);
+    if (!publishValidationResult.ok) {
+      return publishValidationResult;
+    }
   }
 
   return upsertArtistProfileInStore(ownerUserId, parsedInput.value);
