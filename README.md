@@ -87,6 +87,7 @@ Detailed schema and RLS model are in `docs/Backend.md`.
 
 - Product requirements: `docs/PRD.md`
 - Backend architecture: `docs/Backend.md`
+- Shared API contract and frontend/backend source of truth: `docs/API-Contract.md`
 - Feature briefs:
   - `docs/features/artist-authentication.md`
   - `docs/features/artist-profile.md`
