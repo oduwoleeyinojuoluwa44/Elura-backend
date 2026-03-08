@@ -34,7 +34,7 @@ Provide each artist with a structured professional profile that powers public di
 - `POST /api/artists` persists to Supabase `artists`
 - `GET /api/artists` returns published profiles and supports filter combinations
 - `GET /api/artists/[username]` returns one published profile
-- owner identity is currently passed through `x-user-id` until the dedicated auth feature is implemented
+- owner identity is resolved from the authenticated Supabase session cookie
 
 ## Future Work
 

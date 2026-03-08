@@ -1,3 +1,4 @@
+import { getAuthenticatedUser } from "../../../features/auth";
 import { createPortfolioImage } from "../../../features/portfolio";
 import type { PortfolioImage } from "../../../features/portfolio/portfolio.types";
 import type { ApiFailure, ApiSuccess } from "../../../shared/api-response.types";
@@ -19,9 +20,9 @@ function toHttpResponse<T>(result: Result<T, AppError>, successStatus: number): 
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const ownerUserId: string | null = request.headers.get("x-user-id");
-  if (ownerUserId === null || ownerUserId.trim() === "") {
-    return toHttpResponse(err(createError("UNAUTHORIZED", "Missing x-user-id header.")), 200);
+  const authenticatedUserResult = await getAuthenticatedUser();
+  if (!authenticatedUserResult.ok) {
+    return toHttpResponse(authenticatedUserResult, 200);
   }
 
   let payload: unknown;
@@ -31,6 +32,9 @@ export async function POST(request: Request): Promise<Response> {
     return toHttpResponse(err(createError("VALIDATION_ERROR", "Request body must be valid JSON.")), 200);
   }
 
-  const result: Result<PortfolioImage, AppError> = await createPortfolioImage(payload, ownerUserId);
+  const result: Result<PortfolioImage, AppError> = await createPortfolioImage(
+    payload,
+    authenticatedUserResult.value.id
+  );
   return toHttpResponse(result, 201);
 }

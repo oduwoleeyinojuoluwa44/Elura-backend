@@ -1,6 +1,5 @@
-import { getAuthenticatedUser } from "../../../../features/auth";
-import { generateConsultationPack } from "../../../../features/consultation-pack";
-import type { ConsultationPackResponse } from "../../../../features/consultation-pack/consultation-pack.types";
+import { signUpWithEmailPassword } from "../../../../features/auth";
+import type { AuthResponse } from "../../../../features/auth/auth.types";
 import type { ApiFailure, ApiSuccess } from "../../../../shared/api-response.types";
 import { createError, httpStatusForError, toApiFailure, type AppError } from "../../../../shared/errors";
 import { err, type Result } from "../../../../shared/result.types";
@@ -20,21 +19,19 @@ function toHttpResponse<T>(result: Result<T, AppError>, successStatus: number): 
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const authenticatedUserResult = await getAuthenticatedUser();
-  if (!authenticatedUserResult.ok) {
-    return toHttpResponse(authenticatedUserResult, 200);
-  }
-
   let payload: unknown;
   try {
     payload = await request.json();
   } catch {
-    return toHttpResponse(err(createError("VALIDATION_ERROR", "Request body must be valid JSON.")), 200);
+    return toHttpResponse(
+      err(createError("VALIDATION_ERROR", "Request body must be valid JSON.")),
+      200
+    );
   }
 
-  const result: Result<ConsultationPackResponse, AppError> = await generateConsultationPack(
-    payload,
-    authenticatedUserResult.value.id
-  );
-  return toHttpResponse(result, 200);
+  const requestUrl = new URL(request.url);
+  const emailRedirectTo: string = `${requestUrl.origin}/auth/confirm`;
+  const result: Result<AuthResponse, AppError> = await signUpWithEmailPassword(payload, emailRedirectTo);
+
+  return toHttpResponse(result, 201);
 }

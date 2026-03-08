@@ -303,16 +303,24 @@ STEP 1
 User creates account with email and password
 
 STEP 2  
-Supabase Auth creates auth user
+Supabase Auth creates auth user and sends email confirmation when required
 
 STEP 3  
-App redirects to onboarding flow
+User lands on `/auth/confirm` so the backend can exchange `token_hash` for a session cookie
 
 STEP 4  
-User completes artist profile
+App redirects to onboarding flow with an authenticated session
 
 STEP 5  
+User completes artist profile
+
+STEP 6  
 Artist row is created in `artists`
+
+### Session Handling
+- use Supabase SSR cookie-based sessions
+- refresh auth state through `src/proxy.ts`
+- resolve ownership on protected routes from the authenticated session, not from request headers
 
 ---
 
@@ -677,12 +685,15 @@ Recommended environment variables:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 OPENAI_API_KEY=
 ```
 
 ## Notes
+- prefer `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for current Supabase projects
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` can remain as a legacy fallback
 - `SUPABASE_SERVICE_ROLE_KEY` should only be used on the server.
 - Never expose service role keys to the client.
 

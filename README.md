@@ -35,13 +35,17 @@ This repository currently provides a strict-typed feature scaffold for those cap
 
 ```text
 src/
+  proxy.ts
   app/
     api/
+      auth/
       artists/
       portfolio/
       booking-requests/
       ai/consultation-pack/
+    auth/
   features/
+    auth/
     artists/
     portfolio/
     booking-requests/
@@ -53,6 +57,11 @@ src/
 
 ## API Surface (Scaffolded)
 
+- `POST /api/auth/sign-up` create an artist account with email/password
+- `POST /api/auth/sign-in` authenticate and set the session cookie
+- `POST /api/auth/sign-out` clear the current session
+- `GET /api/auth/me` fetch the authenticated user bound to the current session
+- `GET /auth/confirm` exchange a Supabase `token_hash` for a session after email confirmation
 - `POST /api/artists` create/update artist profile
 - `GET /api/artists` list published artists with filters
 - `GET /api/artists/[username]` fetch one published artist profile
@@ -62,7 +71,7 @@ src/
 
 Routes delegate into feature services and return typed response envelopes.
 
-Current auth note: `POST /api/artists` expects a temporary `x-user-id` header until the dedicated auth feature is implemented.
+Protected write routes resolve the owner from the authenticated Supabase session cookie, not from caller-supplied headers.
 
 ## Data Model Summary
 
@@ -91,9 +100,15 @@ Detailed schema and RLS model are in `docs/Backend.md`.
 Create a local env file from `.env.example` and provide values:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` preferred for current Supabase projects
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` supported as a legacy fallback
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `OPENAI_API_KEY`
+
+For SSR auth flows, configure the Supabase Auth email templates to redirect through the local confirmation route:
+
+- Confirm signup: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`
+- Magic link if enabled: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink`
 
 ## Local Setup
 

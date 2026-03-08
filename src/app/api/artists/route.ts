@@ -1,3 +1,4 @@
+import { getAuthenticatedUser } from "../../../features/auth";
 import { getPublishedArtists, upsertArtistProfile } from "../../../features/artists";
 import type { ArtistProfile } from "../../../features/artists/artists.types";
 import type { ApiFailure, ApiSuccess } from "../../../shared/api-response.types";
@@ -26,9 +27,9 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const ownerUserId: string | null = request.headers.get("x-user-id");
-  if (ownerUserId === null || ownerUserId.trim() === "") {
-    return toHttpResponse(err(createError("UNAUTHORIZED", "Missing x-user-id header.")), 200);
+  const authenticatedUserResult = await getAuthenticatedUser();
+  if (!authenticatedUserResult.ok) {
+    return toHttpResponse(authenticatedUserResult, 200);
   }
 
   let payload: unknown;
@@ -38,6 +39,9 @@ export async function POST(request: Request): Promise<Response> {
     return toHttpResponse(err(createError("VALIDATION_ERROR", "Request body must be valid JSON.")), 200);
   }
 
-  const result: Result<ArtistProfile, AppError> = await upsertArtistProfile(payload, ownerUserId);
+  const result: Result<ArtistProfile, AppError> = await upsertArtistProfile(
+    payload,
+    authenticatedUserResult.value.id
+  );
   return toHttpResponse(result, 200);
 }
