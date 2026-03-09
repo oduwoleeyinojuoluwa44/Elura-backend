@@ -1,5 +1,5 @@
 import { getPublishedArtistByUsername } from "../../../../features/artists";
-import type { ArtistProfile } from "../../../../features/artists/artists.types";
+import type { ArtistProfileDetail } from "../../../../features/artists/artists.types";
 import type { ApiFailure, ApiSuccess } from "../../../../shared/api-response.types";
 import { httpStatusForError, toApiFailure, type AppError } from "../../../../shared/errors";
 import type { Result } from "../../../../shared/result.types";
@@ -26,7 +26,7 @@ function toHttpResponse<T>(result: Result<T, AppError>, successStatus: number): 
 
 export async function GET(_request: Request, context: ArtistRouteContext): Promise<Response> {
   const params: { username: string } = await context.params;
-  const result: Result<ArtistProfile, AppError> = await getPublishedArtistByUsername(
+  const result: Result<ArtistProfileDetail, AppError> = await getPublishedArtistByUsername(
     params.username
   );
 

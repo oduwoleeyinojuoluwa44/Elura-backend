@@ -4,9 +4,12 @@ import type { Database } from "../../lib/supabase/database.types";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { createError, type AppError } from "../../shared/errors";
 import { err, ok, type Result } from "../../shared/result.types";
+import { fetchPortfolioImagesByArtistIdFromStore } from "../portfolio/portfolio.repository";
+import type { PortfolioImage } from "../portfolio/portfolio.types";
 import type {
   ArtistDiscoveryFilters,
   ArtistProfile,
+  ArtistProfileDetail,
   ArtistProfileRecord,
   CreateOrUpdateArtistInput
 } from "./artists.types";
@@ -46,6 +49,16 @@ function toPublicArtistProfile(record: ArtistProfileRecord): ArtistProfile {
     isPublished: record.isPublished,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt
+  };
+}
+
+function toArtistProfileDetail(
+  record: ArtistProfileRecord,
+  portfolioImages: PortfolioImage[]
+): ArtistProfileDetail {
+  return {
+    ...toPublicArtistProfile(record),
+    portfolioImages
   };
 }
 
@@ -201,7 +214,7 @@ export async function fetchPublishedArtistsFromStore(
 
 export async function fetchPublishedArtistByUsernameFromStore(
   username: string
-): Promise<Result<ArtistProfile, AppError>> {
+): Promise<Result<ArtistProfileDetail, AppError>> {
   try {
     const serverClient = createSupabaseServerClient();
     const response = await serverClient
@@ -220,7 +233,13 @@ export async function fetchPublishedArtistByUsernameFromStore(
     }
 
     const artistRow: ArtistRow = response.data as ArtistRow;
-    return ok(toPublicArtistProfile(mapArtistRow(artistRow)));
+    const artistProfileRecord: ArtistProfileRecord = mapArtistRow(artistRow);
+    const portfolioImagesResult = await fetchPortfolioImagesByArtistIdFromStore(artistProfileRecord.id);
+    if (!portfolioImagesResult.ok) {
+      return portfolioImagesResult;
+    }
+
+    return ok(toArtistProfileDetail(artistProfileRecord, portfolioImagesResult.value));
   } catch (error: unknown) {
     return err(
       createError("INTERNAL_ERROR", "Failed to initialize the public artist profile store.", {

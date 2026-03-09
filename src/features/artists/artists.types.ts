@@ -1,3 +1,5 @@
+import type { PortfolioImage } from "../portfolio/portfolio.types";
+
 export type ArtistSpecialty = string;
 
 export interface ArtistProfile {
@@ -17,6 +19,10 @@ export interface ArtistProfile {
 
 export interface ArtistProfileRecord extends ArtistProfile {
   userId: string;
+}
+
+export interface ArtistProfileDetail extends ArtistProfile {
+  portfolioImages: PortfolioImage[];
 }
 
 export interface CreateOrUpdateArtistInput {

@@ -1,5 +1,6 @@
 import { createError, type AppError } from "../../shared/errors";
 import { err, ok, type Result } from "../../shared/result.types";
+import { countPortfolioImagesByArtistId } from "../portfolio/portfolio.service";
 import {
   fetchArtistProfileByOwnerUserIdFromStore,
   fetchPublishedArtistByUsernameFromStore,
@@ -10,6 +11,7 @@ import { parseArtistDiscoveryFilters, parseCreateOrUpdateArtistInput } from "./a
 import type {
   ArtistDiscoveryFilters,
   ArtistProfile,
+  ArtistProfileDetail,
   ArtistProfileRecord,
   CreateOrUpdateArtistInput
 } from "./artists.types";
@@ -81,6 +83,25 @@ export async function upsertArtistProfile(
     if (!publishValidationResult.ok) {
       return publishValidationResult;
     }
+
+    if (existingProfileResult.value === null) {
+      return err(
+        createError("VALIDATION_ERROR", "Add at least one portfolio image before publishing.")
+      );
+    }
+
+    const portfolioImageCountResult: Result<number, AppError> = await countPortfolioImagesByArtistId(
+      existingProfileResult.value.id
+    );
+    if (!portfolioImageCountResult.ok) {
+      return portfolioImageCountResult;
+    }
+
+    if (portfolioImageCountResult.value === 0) {
+      return err(
+        createError("VALIDATION_ERROR", "Add at least one portfolio image before publishing.")
+      );
+    }
   }
 
   return upsertArtistProfileInStore(ownerUserId, parsedInput.value);
@@ -99,7 +120,7 @@ export async function getPublishedArtists(
 
 export async function getPublishedArtistByUsername(
   username: string
-): Promise<Result<ArtistProfile, AppError>> {
+): Promise<Result<ArtistProfileDetail, AppError>> {
   const normalizedUsername: string = username.trim().toLowerCase();
   if (normalizedUsername === "") {
     return err(createError("VALIDATION_ERROR", "username is required."));

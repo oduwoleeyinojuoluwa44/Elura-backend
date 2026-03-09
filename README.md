@@ -64,7 +64,7 @@ src/
 - `GET /auth/confirm` exchange a Supabase `token_hash` for a session after email confirmation
 - `POST /api/artists` create/update artist profile
 - `GET /api/artists` list published artists with filters
-- `GET /api/artists/[username]` fetch one published artist profile
+- `GET /api/artists/[username]` fetch one published artist profile with ordered portfolio images
 - `POST /api/portfolio` create portfolio image metadata
 - `POST /api/booking-requests` create booking request
 - `POST /api/ai/consultation-pack` generate AI consultation pack
@@ -72,6 +72,7 @@ src/
 Routes delegate into feature services and return typed response envelopes.
 
 Protected write routes resolve the owner from the authenticated Supabase session cookie, not from caller-supplied headers.
+Public artist detail responses include ordered `portfolioImages`.
 
 ## Data Model Summary
 

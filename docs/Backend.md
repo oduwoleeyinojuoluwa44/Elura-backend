@@ -345,14 +345,16 @@ Create one bucket:
 Use a predictable path structure:
 
 ```text
-portfolio-images/{artist_id}/{filename}
+{artist_id}/{filename}
 ```
 
 Example:
 
 ```text
-portfolio-images/0d12-artist-uuid/look-1.jpg
+0d12-artist-uuid/look-1.jpg
 ```
+
+This path is stored in `portfolio_images.storage_path` and is relative to the `portfolio-images` bucket.
 
 ## 11.3 Why this matters
 
@@ -511,7 +513,10 @@ Return one public artist profile with portfolio images.
 Handle image metadata creation after upload.
 
 ### Behavior
+- require authenticated session
 - verify ownership
+- verify `artist_id` belongs to the authenticated user
+- verify `storage_path` points to the artist's portfolio directory
 - write image row in `portfolio_images`
 
 ---

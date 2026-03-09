@@ -15,4 +15,3 @@ export interface CreatePortfolioImageInput {
   caption?: string;
   sortOrder?: number;
 }
-

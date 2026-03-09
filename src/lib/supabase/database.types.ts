@@ -57,6 +57,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      portfolio_images: {
+        Row: {
+          id: string;
+          artist_id: string;
+          image_url: string;
+          storage_path: string;
+          caption: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          artist_id: string;
+          image_url: string;
+          storage_path: string;
+          caption?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          artist_id?: string;
+          image_url?: string;
+          storage_path?: string;
+          caption?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -64,4 +94,3 @@ export interface Database {
     CompositeTypes: Record<string, never>;
   };
 }
-

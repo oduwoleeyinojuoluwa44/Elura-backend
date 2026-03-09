@@ -33,10 +33,10 @@ Provide each artist with a structured professional profile that powers public di
 
 - `POST /api/artists` persists to Supabase `artists`
 - `GET /api/artists` returns published profiles and supports filter combinations
-- `GET /api/artists/[username]` returns one published profile
+- `GET /api/artists/[username]` returns one published profile with ordered `portfolioImages`
 - owner identity is resolved from the authenticated Supabase session cookie
+- publishing now requires at least one portfolio image in addition to profile completeness
 
 ## Future Work
 
-- publish gating checks tied to portfolio presence
 - uniqueness and conflict feedback for username claims
