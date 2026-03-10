@@ -405,11 +405,13 @@ Failure contract:
 
 - `400` invalid payload
 - `409` email already registered
+- `500` authentication provider temporarily unavailable
 
 Frontend rules:
 
 - If `requiresEmailConfirmation` is `true`, show confirmation-required UI.
 - Do not assume the user can access protected routes until the session is confirmed or a sign-in succeeds.
+- Treat `500` as a transient backend/auth-provider failure, not a form-validation failure.
 
 ### `POST /api/auth/sign-in`
 
@@ -448,11 +450,13 @@ Failure contract:
 
 - `400` invalid payload
 - `401` invalid email or password
+- `500` authentication provider temporarily unavailable
 
 Frontend rules:
 
 - After success, treat the session cookie as established.
 - Use `GET /api/auth/me` for subsequent auth revalidation.
+- Treat `500` as a transient backend/auth-provider failure, not as invalid credentials.
 
 ### `POST /api/auth/sign-out`
 
@@ -507,10 +511,12 @@ Success `200`:
 Failure contract:
 
 - `401` when no valid session exists
+- `500` authentication provider temporarily unavailable
 
 Frontend rules:
 
 - Treat `401` as the signed-out state.
+- Treat `500` as an auth infrastructure failure and allow retry.
 - This route is the backend truth for auth status.
 
 ### `GET /auth/confirm`
@@ -682,6 +688,8 @@ Frontend rules:
 - Use `price_range` in the URL, not `priceRange`.
 - Do not assume pagination exists yet.
 - Do not assume text search exists yet.
+- Discovery list items do not include `portfolioImages`.
+- Use `GET /api/artists/[username]` for the full public gallery payload.
 
 ### `GET /api/artists/[username]`
 
@@ -807,6 +815,7 @@ Frontend rules:
 - Use the current artist profile `id` as `artistId`.
 - Keep `storagePath` inside the artist directory.
 - After a successful create, refresh the public profile data from `GET /api/artists/[username]` if the UI needs the full ordered gallery.
+- Publishing should happen only after at least one successful portfolio image create.
 
 ### `POST /api/booking-requests`
 
@@ -1039,6 +1048,61 @@ async function apiRequest<T>(input: RequestInfo, init?: RequestInit): Promise<Ap
 - Public artist profile pages should use `GET /api/artists/[username]`.
 - Profile edit screens should post to `POST /api/artists`.
 - Remaining reserved endpoints should be hidden, flagged, or treated as unavailable until implemented.
+
+### Separate Frontend Repo Local Development
+
+If the frontend runs in a separate Next.js repo and separate local dev server, it must target the backend origin explicitly.
+
+Required local frontend env:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:BACKEND_PORT
+```
+
+Rules:
+
+- `NEXT_PUBLIC_API_BASE_URL` must always point to the backend origin actually running for the current local session.
+- Do not proxy backend auth routes to the frontend origin.
+- If the frontend uses a proxy or rewrite for `/api/*`, the destination must be the backend origin, not the frontend origin.
+- A frontend running on `http://localhost:3000` with backend on `http://localhost:3001` must target `http://localhost:3001`.
+- A frontend running on `http://localhost:3001` with backend on `http://localhost:3000` must target `http://localhost:3000`.
+- The frontend must never proxy `/api/auth/sign-in` back to its own origin.
+- Relative `/api/*` calls from the frontend hit the frontend app unless an explicit proxy or rewrite is configured.
+- Browser requests that need session cookies must use `credentials: "include"`.
+
+Examples:
+
+- frontend `http://localhost:3000`, backend `http://localhost:3001`
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+```
+
+- frontend `http://localhost:3001`, backend `http://localhost:3000`
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+```
+
+### Recommended Frontend Happy Path
+
+Use this order for the current onboarding and portfolio flow:
+
+1. `POST /api/auth/sign-in`
+2. `GET /api/auth/me`
+3. `POST /api/artists` with `isPublished: false`
+4. read `data.id` from the profile response and treat it as the canonical `artistId`
+5. `POST /api/portfolio` one or more times using that `artistId`
+6. `POST /api/artists` again with `isPublished: true`
+7. `GET /api/artists/[username]` for the public preview payload
+8. `GET /api/artists` for discovery verification if needed
+
+Important:
+
+- `artistId` is the artist profile id, not the auth user id.
+- Trying to publish before step 5 should fail with `400`.
+- The discovery list is summary-only.
+- The public detail route is the gallery route.
 
 ## Backend Responsibilities
 

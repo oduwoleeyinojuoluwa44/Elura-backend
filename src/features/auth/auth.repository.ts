@@ -1,4 +1,8 @@
-import type { AuthError, User } from "@supabase/supabase-js";
+import {
+  isAuthRetryableFetchError,
+  type AuthError,
+  type User
+} from "@supabase/supabase-js";
 import { createSupabaseServerAuthClient } from "../../lib/supabase/server";
 import { createError, type AppError } from "../../shared/errors";
 import { err, ok, type Result } from "../../shared/result.types";
@@ -19,6 +23,14 @@ function mapAuthUser(user: User): AuthUser {
 }
 
 function mapSignUpError(error: AuthError): AppError {
+  if (isAuthRetryableFetchError(error)) {
+    return createError("INTERNAL_ERROR", "Authentication service is temporarily unavailable.", {
+      message: error.message,
+      name: error.name,
+      status: error.status
+    });
+  }
+
   const message: string = error.message.toLowerCase();
 
   if (message.includes("already registered") || message.includes("already been registered")) {
@@ -32,8 +44,33 @@ function mapSignUpError(error: AuthError): AppError {
 }
 
 function mapSignInError(error: AuthError): AppError {
+  if (isAuthRetryableFetchError(error)) {
+    return createError("INTERNAL_ERROR", "Authentication service is temporarily unavailable.", {
+      message: error.message,
+      name: error.name,
+      status: error.status
+    });
+  }
+
   return createError("UNAUTHORIZED", "Invalid email or password.", {
     message: error.message,
+    name: error.name,
+    status: error.status
+  });
+}
+
+function mapSessionError(error: AuthError, unauthorizedMessage: string): AppError {
+  if (isAuthRetryableFetchError(error)) {
+    return createError("INTERNAL_ERROR", "Authentication service is temporarily unavailable.", {
+      message: error.message,
+      name: error.name,
+      status: error.status
+    });
+  }
+
+  return createError("UNAUTHORIZED", unauthorizedMessage, {
+    message: error.message,
+    name: error.name,
     status: error.status
   });
 }
@@ -104,12 +141,21 @@ export async function signOutInStore(): Promise<Result<AuthSignOutResponse, AppE
     const response = await supabase.auth.signOut();
 
     if (response.error !== null) {
-      return err(
-        createError("INTERNAL_ERROR", "Unable to sign out.", {
-          message: response.error.message,
-          status: response.error.status
-        })
-      );
+      if (isAuthRetryableFetchError(response.error)) {
+        return err(
+          createError("INTERNAL_ERROR", "Authentication service is temporarily unavailable.", {
+            message: response.error.message,
+            name: response.error.name,
+            status: response.error.status
+          })
+        );
+      }
+
+      return err(createError("INTERNAL_ERROR", "Unable to sign out.", {
+        message: response.error.message,
+        name: response.error.name,
+        status: response.error.status
+      }));
     }
 
     return ok({ success: true });
@@ -123,7 +169,11 @@ export async function fetchAuthenticatedUserFromStore(): Promise<Result<AuthUser
     const supabase = await createSupabaseServerAuthClient();
     const response = await supabase.auth.getUser();
 
-    if (response.error !== null || response.data.user === null) {
+    if (response.error !== null) {
+      return err(mapSessionError(response.error, "Authentication required."));
+    }
+
+    if (response.data.user === null) {
       return err(createError("UNAUTHORIZED", "Authentication required."));
     }
 
@@ -143,7 +193,13 @@ export async function verifyOtpInStore(
       type: input.type
     });
 
-    if (response.error !== null || response.data.user === null) {
+    if (response.error !== null) {
+      return err(
+        mapSessionError(response.error, "Unable to verify the authentication link.")
+      );
+    }
+
+    if (response.data.user === null) {
       return err(createError("UNAUTHORIZED", "Unable to verify the authentication link."));
     }
 
@@ -152,4 +208,3 @@ export async function verifyOtpInStore(
     return err(mapAuthInitializationError(error, "Failed to initialize email confirmation."));
   }
 }
-
