@@ -4,11 +4,16 @@ import { createSupabaseServerClient } from "../../lib/supabase/server";
 import type { Database } from "../../lib/supabase/database.types";
 import { createError, type AppError } from "../../shared/errors";
 import { err, ok, type Result } from "../../shared/result.types";
-import type { CreatePortfolioImageInput, PortfolioImage } from "./portfolio.types";
+import type {
+  CreatePortfolioImageInput,
+  PortfolioImage,
+  UploadPortfolioImageInput
+} from "./portfolio.types";
 
 type ArtistRow = Database["public"]["Tables"]["artists"]["Row"];
 type PortfolioImageRow = Database["public"]["Tables"]["portfolio_images"]["Row"];
 type PortfolioImageInsert = Database["public"]["Tables"]["portfolio_images"]["Insert"];
+const PORTFOLIO_BUCKET = "portfolio-images";
 
 function mapPortfolioImageRow(row: PortfolioImageRow): PortfolioImage {
   return {
@@ -30,6 +35,16 @@ function mapPostgrestError(error: PostgrestError, action: string): AppError {
   });
 }
 
+function mapStorageError(
+  error: { message: string; statusCode?: string | number | undefined },
+  action: string
+): AppError {
+  return createError("INTERNAL_ERROR", `Failed to ${action}.`, {
+    message: error.message,
+    statusCode: error.statusCode
+  });
+}
+
 function isMissingPortfolioTableError(error: PostgrestError): boolean {
   return error.code === "PGRST205";
 }
@@ -41,6 +56,19 @@ function isStoragePathOwnedByArtist(storagePath: string, artistId: string): bool
     normalizedPath.startsWith(`${artistId}/`) ||
     normalizedPath.startsWith(`portfolio-images/${artistId}/`)
   );
+}
+
+function buildPortfolioStoragePath(artistId: string, fileExtension: string): string {
+  return `${artistId}/${crypto.randomUUID()}.${fileExtension}`;
+}
+
+async function deletePortfolioImageFromStorage(storagePath: string): Promise<void> {
+  try {
+    const adminClient = createSupabaseAdminClient();
+    await adminClient.storage.from(PORTFOLIO_BUCKET).remove([storagePath]);
+  } catch {
+    // Cleanup should not hide the original failure.
+  }
 }
 
 async function fetchArtistRowById(artistId: string): Promise<Result<ArtistRow | null, AppError>> {
@@ -129,6 +157,91 @@ export async function createPortfolioImageInStore(
 
     return ok(mapPortfolioImageRow(response.data as PortfolioImageRow));
   } catch (error: unknown) {
+    return err(
+      createError("INTERNAL_ERROR", "Failed to initialize the portfolio store.", {
+        cause: error instanceof Error ? error.message : "unknown"
+      })
+    );
+  }
+}
+
+export async function createUploadedPortfolioImageInStore(
+  ownerUserId: string,
+  input: UploadPortfolioImageInput
+): Promise<Result<PortfolioImage, AppError>> {
+  const artistResult: Result<ArtistRow | null, AppError> = await fetchArtistRowById(input.artistId);
+  if (!artistResult.ok) {
+    return artistResult;
+  }
+
+  if (artistResult.value === null) {
+    return err(createError("NOT_FOUND", "Artist profile not found."));
+  }
+
+  if (artistResult.value.user_id !== ownerUserId) {
+    return err(
+      createError("FORBIDDEN", "You can only add portfolio images to your own artist profile.")
+    );
+  }
+
+  const storagePath = buildPortfolioStoragePath(input.artistId, input.fileExtension);
+
+  try {
+    const adminClient = createSupabaseAdminClient();
+    const uploadResponse = await adminClient.storage
+      .from(PORTFOLIO_BUCKET)
+      .upload(storagePath, input.fileBytes, {
+        contentType: input.contentType,
+        cacheControl: "3600",
+        upsert: false
+      });
+
+    if (uploadResponse.error !== null) {
+      return err(mapStorageError(uploadResponse.error, "upload the portfolio image"));
+    }
+
+    const publicUrlResponse = adminClient.storage.from(PORTFOLIO_BUCKET).getPublicUrl(storagePath);
+    const imageUrl = publicUrlResponse.data.publicUrl;
+    if (typeof imageUrl !== "string" || imageUrl.trim() === "") {
+      await deletePortfolioImageFromStorage(storagePath);
+      return err(
+        createError("INTERNAL_ERROR", "Failed to resolve the public portfolio image URL.")
+      );
+    }
+
+    const payload: PortfolioImageInsert = {
+      artist_id: input.artistId,
+      image_url: imageUrl,
+      storage_path: storagePath,
+      caption: input.caption ?? null,
+      sort_order: input.sortOrder ?? 0
+    };
+
+    const response = await adminClient
+      .from("portfolio_images")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (response.error !== null) {
+      await deletePortfolioImageFromStorage(storagePath);
+
+      if (isMissingPortfolioTableError(response.error)) {
+        return err(
+          createError(
+            "NOT_IMPLEMENTED",
+            "Portfolio image persistence is not configured in this environment."
+          )
+        );
+      }
+
+      return err(mapPostgrestError(response.error, "save the portfolio image"));
+    }
+
+    return ok(mapPortfolioImageRow(response.data as PortfolioImageRow));
+  } catch (error: unknown) {
+    await deletePortfolioImageFromStorage(storagePath);
+
     return err(
       createError("INTERNAL_ERROR", "Failed to initialize the portfolio store.", {
         cause: error instanceof Error ? error.message : "unknown"

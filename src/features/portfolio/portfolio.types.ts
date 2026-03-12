@@ -15,3 +15,12 @@ export interface CreatePortfolioImageInput {
   caption?: string;
   sortOrder?: number;
 }
+
+export interface UploadPortfolioImageInput {
+  artistId: string;
+  fileBytes: Uint8Array;
+  contentType: string;
+  fileExtension: string;
+  caption?: string;
+  sortOrder?: number;
+}

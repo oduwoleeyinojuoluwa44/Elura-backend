@@ -3,10 +3,11 @@ import { err, type Result } from "../../shared/result.types";
 import {
   countPortfolioImagesByArtistIdInStore,
   createPortfolioImageInStore,
+  createUploadedPortfolioImageInStore,
   fetchPortfolioImagesByArtistIdFromStore
 } from "./portfolio.repository";
-import { parseCreatePortfolioImageInput } from "./portfolio.schemas";
-import type { CreatePortfolioImageInput, PortfolioImage } from "./portfolio.types";
+import { parseCreatePortfolioImageInput, parseUploadPortfolioImageInput } from "./portfolio.schemas";
+import type { CreatePortfolioImageInput, PortfolioImage, UploadPortfolioImageInput } from "./portfolio.types";
 
 export async function createPortfolioImage(
   payload: unknown,
@@ -23,6 +24,23 @@ export async function createPortfolioImage(
   }
 
   return createPortfolioImageInStore(ownerUserId, parsedInput.value);
+}
+
+export async function uploadPortfolioImage(
+  formData: FormData,
+  ownerUserId: string
+): Promise<Result<PortfolioImage, AppError>> {
+  if (ownerUserId.trim() === "") {
+    return err(createError("UNAUTHORIZED", "Authenticated user is required."));
+  }
+
+  const parsedInput: Result<UploadPortfolioImageInput, AppError> =
+    await parseUploadPortfolioImageInput(formData);
+  if (!parsedInput.ok) {
+    return parsedInput;
+  }
+
+  return createUploadedPortfolioImageInStore(ownerUserId, parsedInput.value);
 }
 
 export async function getPortfolioImagesByArtistId(

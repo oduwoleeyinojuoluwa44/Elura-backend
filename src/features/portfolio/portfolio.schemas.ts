@@ -1,6 +1,7 @@
 import { createError, type AppError } from "../../shared/errors";
 import { err, ok, type Result } from "../../shared/result.types";
-import type { CreatePortfolioImageInput } from "./portfolio.types";
+import { parsePortfolioUploadFormData } from "./portfolio-upload.utils";
+import type { CreatePortfolioImageInput, UploadPortfolioImageInput } from "./portfolio.types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -102,3 +103,33 @@ export function parseCreatePortfolioImageInput(
   return ok(input);
 }
 
+export async function parseUploadPortfolioImageInput(
+  formData: FormData
+): Promise<Result<UploadPortfolioImageInput, AppError>> {
+  try {
+    const parsedInput = await parsePortfolioUploadFormData(formData);
+    const input: UploadPortfolioImageInput = {
+      artistId: parsedInput.artistId,
+      fileBytes: parsedInput.fileBytes,
+      contentType: parsedInput.contentType,
+      fileExtension: parsedInput.fileExtension
+    };
+
+    if (parsedInput.caption !== undefined) {
+      input.caption = parsedInput.caption;
+    }
+
+    if (parsedInput.sortOrder !== undefined) {
+      input.sortOrder = parsedInput.sortOrder;
+    }
+
+    return ok(input);
+  } catch (error: unknown) {
+    return err(
+      createError(
+        "VALIDATION_ERROR",
+        error instanceof Error ? error.message : "Invalid portfolio upload payload."
+      )
+    );
+  }
+}

@@ -510,13 +510,16 @@ Return one public artist profile with portfolio images.
 ---
 
 ## 15.4 POST /api/portfolio
-Handle image metadata creation after upload.
+Handle authenticated portfolio image upload and metadata creation.
 
 ### Behavior
 - require authenticated session
 - verify ownership
 - verify `artist_id` belongs to the authenticated user
-- verify `storage_path` points to the artist's portfolio directory
+- accept `multipart/form-data` with an image file
+- validate image type and size
+- upload image to the `portfolio-images` bucket under the artist directory
+- generate `storage_path` server-side
 - write image row in `portfolio_images`
 
 ---
@@ -795,7 +798,7 @@ STEP 12 — build artist create/update route
 STEP 13 — build artist public fetch route  
 STEP 14 — build discovery list route  
 STEP 15 — build booking request route  
-STEP 16 — build portfolio metadata route  
+STEP 16 — build portfolio upload route  
 
 ## Phase 5 — AI
 STEP 17 — build consultation pack route  

@@ -65,7 +65,7 @@ src/
 - `POST /api/artists` create/update artist profile
 - `GET /api/artists` list published artists with filters
 - `GET /api/artists/[username]` fetch one published artist profile with ordered portfolio images
-- `POST /api/portfolio` create portfolio image metadata
+- `POST /api/portfolio` upload a portfolio image and persist its metadata
 - `POST /api/booking-requests` create booking request
 - `POST /api/ai/consultation-pack` generate AI consultation pack
 
